@@ -8,8 +8,8 @@ Because images are downloaded immediately after the pod is created,
 so there is no need to filter nodes based on image locality.
 
 However, downloading images need a few minutes to complete,
-and it leads to harminig user experience.
-So in some environment, daemonset is used to download images, before the pod is created.
+and it harms user experience.
+So in some environment, daemonset is used to download images preemptively.
 In this case, we should prevent pods to be scheduled on nodes without images.
 
 ## Installation
