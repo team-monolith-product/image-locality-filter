@@ -20,6 +20,10 @@ so there are no way to install this plugin in easy way.
 You must build image for your environment and upload it to docker registry.
 Then, you can use the image in your kubernetes cluster.
 
+```
+git tag v{major}.{minor}.{patch}
+make realease-image
+```
 
 ## Reference
 https://github.com/jupyterhub/zero-to-jupyterhub-k8s/issues/1851
