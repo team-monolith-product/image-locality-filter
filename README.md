@@ -22,7 +22,7 @@ Then, you can use the image in your kubernetes cluster.
 
 ```
 git tag v{major}.{minor}.{patch}
-make realease-image
+make release-image
 ```
 
 ## Reference
