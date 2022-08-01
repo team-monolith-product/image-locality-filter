@@ -12,7 +12,7 @@ RUN RELEASE_VERSION=${RELEASE_VERSION} make build.$ARCH
 
 FROM $ARCH/alpine:3.16
 
-COPY --from=0 /go/src/github.com/team-monolith-product/image-locality-filter /usr/local/bin/kube-scheduler
+COPY --from=0 /go/src/github.com/team-monolith-product/image-locality-filter/bin/kube-scheduler /usr/local/bin/kube-scheduler
 
 WORKDIR /usr/local/bin
 CMD ["kube-scheduler"]
