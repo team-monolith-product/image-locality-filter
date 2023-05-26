@@ -3,8 +3,8 @@ module github.com/team-monolith-product/image-locality-filter
 go 1.18
 
 require (
-	k8s.io/api v0.23.9
-	k8s.io/kubernetes v1.23.9
+	k8s.io/api v0.24.14
+	k8s.io/kubernetes v1.24.14
 )
 
 require (
@@ -117,7 +117,7 @@ require (
 // image-locality-filter$ go mod tidy
 // go: k8s.io/kubernetes@v1.23.9 requires
 //         k8s.io/apiextensions-apiserver@v0.0.0: reading k8s.io/apiextensions-apiserver/go.mod at revision v0.0.0: unknown revision v0.0.0
-// 
+//
 // Adopted From
 // https://github.com/team-monolith-product/scheduler-plugins/blob/master/go.mod
 replace (
