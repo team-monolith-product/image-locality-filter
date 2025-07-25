@@ -10,7 +10,7 @@ ARG ARCH
 ARG RELEASE_VERSION
 RUN RELEASE_VERSION=${RELEASE_VERSION} make build.$ARCH
 
-FROM $ARCH/alpine:3.16
+FROM --platform=${ARCH} ${ARCH}/alpine:3.21
 
 COPY --from=0 /go/src/github.com/team-monolith-product/image-locality-filter/bin/kube-scheduler /usr/local/bin/kube-scheduler
 
