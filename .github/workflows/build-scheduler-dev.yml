@@ -1,0 +1,33 @@
+name: Build Scheduler - dev
+
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  build:
+    uses: team-monolith-product/tmn-gh-actions/.github/workflows/build_v2.yml@develop
+    with:
+      env: dev
+      target: develop
+      helmRepository: jce-jupyter-hub-helm
+      dockerTarget: runtime
+      buildArgs: |
+        ARCH=amd64
+      propertyPath: 'jupyterhub-1.scheduling.userScheduler.image.tag'
+      updateTargets: |
+        {
+          "aws": {
+            "imageName": "tmn-ecr-k8s-scheduler",
+            "valueFilePath": ["aws-apne2-dev-jupyter.yaml"]
+          },
+          "ncp": {
+            "registry": "ped-cr-all-dev.ncr.gov-ntruss.com",
+            "imageName": "tmn-ecr-k8s-scheduler",
+            "valueFilePath": ["ncloud.yaml"]
+          }
+        }
+    secrets:
+      NCP_ACCESS_KEY_ID: ${{ secrets.NCP_ACCESS_KEY_ID }}
+      NCP_SECRET_KEY: ${{ secrets.NCP_SECRET_KEY }}
+      MACHINE_TOKEN: ${{ secrets.MACHINE_TOKEN }}
