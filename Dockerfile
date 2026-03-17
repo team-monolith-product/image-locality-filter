@@ -2,7 +2,7 @@
 # https://github.com/team-monolith-product/scheduler-plugins/blob/master/build/scheduler/Dockerfile
 
 ARG ARCH
-FROM golang:1.19
+FROM golang:1.24
 
 WORKDIR /go/src/github.com/team-monolith-product/image-locality-filter
 COPY . .

@@ -17,7 +17,7 @@ var _ framework.FilterPlugin = &ImageLocalityFilter{}
 
 const Name = "ImageLocalityFilter"
 
-func New(_ runtime.Object, h framework.Handle) (framework.Plugin, error) {
+func New(_ context.Context, _ runtime.Object, h framework.Handle) (framework.Plugin, error) {
 	return &ImageLocalityFilter{handle: h}, nil
 }
 
