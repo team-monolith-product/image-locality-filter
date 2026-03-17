@@ -4,7 +4,7 @@
 COMMONENVVAR=GOOS=$(shell uname -s | tr A-Z a-z)
 BUILDENVVAR=CGO_ENABLED=0
 
-VERSION=v1.33.0
+VERSION=v1.25.7
 
 .PHONY: build.amd64
 build.amd64: clean
