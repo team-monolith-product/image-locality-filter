@@ -7,10 +7,9 @@ FROM golang:1.19
 WORKDIR /go/src/github.com/team-monolith-product/image-locality-filter
 COPY . .
 ARG ARCH
-ARG RELEASE_VERSION
-RUN RELEASE_VERSION=${RELEASE_VERSION} make build.$ARCH
+RUN make build.$ARCH
 
-FROM --platform=${ARCH} ${ARCH}/alpine:3.21
+FROM --platform=${ARCH} ${ARCH}/alpine:3.21 AS runtime
 
 COPY --from=0 /go/src/github.com/team-monolith-product/image-locality-filter/bin/kube-scheduler /usr/local/bin/kube-scheduler
 
