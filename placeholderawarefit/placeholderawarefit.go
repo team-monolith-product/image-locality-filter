@@ -23,6 +23,17 @@ func (pl *PlaceholderAwareNodeResourcesFit) Name() string {
 	return Name
 }
 
+// Filter checks whether the incoming pod fits on the node.
+//
+// For user pods (non-placeholder), the fit calculation uses nodeInfo.Requested
+// (which reflects all pods including assumed ones) minus the placeholder
+// contribution computed from nodeInfo.Pods. This ensures that:
+//   - Assumed user pods are counted via nodeInfo.Requested (updated by AddPod)
+//   - Placeholder pods are excluded so that nodes full of placeholders remain
+//     feasible for user pods that will preempt them
+//
+// For placeholder pods, fit is calculated using the full nodeInfo.Requested
+// without any subtraction.
 func (pl *PlaceholderAwareNodeResourcesFit) Filter(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeInfo *framework.NodeInfo) *framework.Status {
 	node := nodeInfo.Node()
 	if node == nil {
@@ -30,8 +41,28 @@ func (pl *PlaceholderAwareNodeResourcesFit) Filter(ctx context.Context, state *f
 	}
 
 	alloc := node.Status.Allocatable
-	excludePlaceholder := !isPlaceholderPod(pod)
-	usedCPU, usedMem, usedEph, usedOthers, podCount := requestedByPods(nodeInfo, excludePlaceholder)
+
+	// Start from nodeInfo.Requested which includes all pods (real + placeholder + assumed).
+	// This is the value maintained by the scheduler cache via AddPod/RemovePod.
+	usedCPU := nodeInfo.Requested.MilliCPU
+	usedMem := nodeInfo.Requested.Memory
+	usedEph := nodeInfo.Requested.EphemeralStorage
+	usedPods := len(nodeInfo.Pods)
+
+	// For user pods, subtract placeholder resource usage so that placeholder-full
+	// nodes remain feasible. Placeholder pods themselves use the full Requested.
+	if !isPlaceholderPod(pod) {
+		for _, podInfo := range nodeInfo.Pods {
+			if isPlaceholderPod(podInfo.Pod) {
+				cpu, mem, eph, _ := podRequest(podInfo.Pod)
+				usedCPU -= cpu
+				usedMem -= mem
+				usedEph -= eph
+				usedPods--
+			}
+		}
+	}
+
 	podCPU, podMem, podEph, podOthers := podRequest(pod)
 
 	if podCPU > alloc.Cpu().MilliValue()-usedCPU {
@@ -49,36 +80,18 @@ func (pl *PlaceholderAwareNodeResourcesFit) Filter(ctx context.Context, state *f
 		if !ok {
 			return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("insufficient %s on %s", name, node.Name))
 		}
-		if requested > allocQty.Value()-usedOthers[name] {
+		if requested > allocQty.Value() {
 			return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("insufficient %s on %s", name, node.Name))
 		}
 	}
 
 	if allocPods, ok := alloc[v1.ResourcePods]; ok {
-		if int64(podCount)+1 > allocPods.Value() {
+		if int64(usedPods)+1 > allocPods.Value() {
 			return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("insufficient pods on %s", node.Name))
 		}
 	}
 
 	return nil
-}
-
-func requestedByPods(nodeInfo *framework.NodeInfo, excludePlaceholder bool) (cpuMilli int64, memBytes int64, ephBytes int64, others map[v1.ResourceName]int64, count int) {
-	others = make(map[v1.ResourceName]int64)
-	for _, podInfo := range nodeInfo.Pods {
-		if excludePlaceholder && isPlaceholderPod(podInfo.Pod) {
-			continue
-		}
-		count++
-		podCPU, podMem, podEph, podOthers := podRequest(podInfo.Pod)
-		cpuMilli += podCPU
-		memBytes += podMem
-		ephBytes += podEph
-		for name, value := range podOthers {
-			others[name] += value
-		}
-	}
-	return
 }
 
 func podRequest(pod *v1.Pod) (cpuMilli int64, memBytes int64, ephBytes int64, others map[v1.ResourceName]int64) {
