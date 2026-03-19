@@ -155,7 +155,12 @@ func calculatePodResourceRequest(pod *v1.Pod, resource v1.ResourceName) int64 {
 	var total int64
 	for _, container := range pod.Spec.Containers {
 		if q, ok := container.Resources.Requests[resource]; ok {
-			total += q.MilliValue()
+			switch resource {
+			case v1.ResourceMemory:
+				total += q.Value()
+			default:
+				total += q.MilliValue()
+			}
 		}
 	}
 	return total

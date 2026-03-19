@@ -249,4 +249,9 @@ func TestCalculatePodResourceRequest(t *testing.T) {
 	if cpu != 500 {
 		t.Errorf("expected 500m cpu, got %d", cpu)
 	}
+
+	mem := calculatePodResourceRequest(pod, v1.ResourceMemory)
+	if mem != 1024 {
+		t.Errorf("expected 1024 bytes memory, got %d", mem)
+	}
 }
