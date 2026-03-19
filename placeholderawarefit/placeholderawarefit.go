@@ -30,7 +30,8 @@ func (pl *PlaceholderAwareNodeResourcesFit) Filter(ctx context.Context, state *f
 	}
 
 	alloc := node.Status.Allocatable
-	usedCPU, usedMem, usedEph, usedOthers, realPodCount := requestedByRealPods(nodeInfo)
+	excludePlaceholder := !isPlaceholderPod(pod)
+	usedCPU, usedMem, usedEph, usedOthers, podCount := requestedByPods(nodeInfo, excludePlaceholder)
 	podCPU, podMem, podEph, podOthers := podRequest(pod)
 
 	if podCPU > alloc.Cpu().MilliValue()-usedCPU {
@@ -54,7 +55,7 @@ func (pl *PlaceholderAwareNodeResourcesFit) Filter(ctx context.Context, state *f
 	}
 
 	if allocPods, ok := alloc[v1.ResourcePods]; ok {
-		if int64(realPodCount)+1 > allocPods.Value() {
+		if int64(podCount)+1 > allocPods.Value() {
 			return framework.NewStatus(framework.Unschedulable, fmt.Sprintf("insufficient pods on %s", node.Name))
 		}
 	}
@@ -62,10 +63,10 @@ func (pl *PlaceholderAwareNodeResourcesFit) Filter(ctx context.Context, state *f
 	return nil
 }
 
-func requestedByRealPods(nodeInfo *framework.NodeInfo) (cpuMilli int64, memBytes int64, ephBytes int64, others map[v1.ResourceName]int64, count int) {
+func requestedByPods(nodeInfo *framework.NodeInfo, excludePlaceholder bool) (cpuMilli int64, memBytes int64, ephBytes int64, others map[v1.ResourceName]int64, count int) {
 	others = make(map[v1.ResourceName]int64)
 	for _, podInfo := range nodeInfo.Pods {
-		if isPlaceholderPod(podInfo.Pod) {
+		if excludePlaceholder && isPlaceholderPod(podInfo.Pod) {
 			continue
 		}
 		count++

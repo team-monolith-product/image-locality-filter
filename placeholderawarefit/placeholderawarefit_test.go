@@ -72,6 +72,21 @@ func TestFilterRejectsWhenRealPodsExceedAllocatable(t *testing.T) {
 	}
 }
 
+func TestFilterCountsPlaceholderWhenIncomingIsPlaceholder(t *testing.T) {
+	plugin := &PlaceholderAwareNodeResourcesFit{}
+	node := makeNode("n1", 1000, 1000, 10)
+	nodeInfo := framework.NewNodeInfo(
+		makePod("placeholder-existing", 900, 900, map[string]string{"component": "user-placeholder"}),
+	)
+	nodeInfo.SetNode(node)
+
+	incoming := makePod("placeholder-incoming", 200, 200, map[string]string{"component": "user-placeholder"})
+	status := plugin.Filter(context.Background(), nil, incoming, nodeInfo)
+	if status == nil || status.Code() != framework.Unschedulable {
+		t.Fatalf("expected unschedulable for placeholder pod when placeholder load is high, got %v", status)
+	}
+}
+
 func TestFilterIgnoresPlaceholderForPodCount(t *testing.T) {
 	plugin := &PlaceholderAwareNodeResourcesFit{}
 	node := makeNode("n1", 2000, 2000, 2)
@@ -102,6 +117,22 @@ func TestFilterRejectsWhenRealPodCountIsFull(t *testing.T) {
 	status := plugin.Filter(context.Background(), nil, incoming, nodeInfo)
 	if status == nil || status.Code() != framework.Unschedulable {
 		t.Fatalf("expected unschedulable due to real pod count, got %v", status)
+	}
+}
+
+func TestFilterCountsPlaceholderPodCountWhenIncomingIsPlaceholder(t *testing.T) {
+	plugin := &PlaceholderAwareNodeResourcesFit{}
+	node := makeNode("n1", 2000, 2000, 2)
+	nodeInfo := framework.NewNodeInfo(
+		makePod("real", 100, 100, nil),
+		makePod("placeholder-existing", 100, 100, map[string]string{"component": "user-placeholder"}),
+	)
+	nodeInfo.SetNode(node)
+
+	incoming := makePod("placeholder-incoming", 100, 100, map[string]string{"component": "user-placeholder"})
+	status := plugin.Filter(context.Background(), nil, incoming, nodeInfo)
+	if status == nil || status.Code() != framework.Unschedulable {
+		t.Fatalf("expected unschedulable due to pod count for placeholder pod, got %v", status)
 	}
 }
 
