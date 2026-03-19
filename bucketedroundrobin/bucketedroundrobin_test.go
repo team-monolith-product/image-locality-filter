@@ -186,6 +186,59 @@ func TestNormalizeScoreSkipsLastSelectedNode(t *testing.T) {
 	}
 }
 
+func TestSimulateEmpty8Nodes24PodsCurrentLogic(t *testing.T) {
+	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 4})
+	obj := &runtime.Unknown{Raw: raw}
+	p, _ := New(obj, nil)
+	brr := p.(*BucketedRoundRobin)
+
+	nodes := []string{"a", "b", "c", "d", "e", "f", "g", "h"}
+	counts := map[string]int{}
+	pod := makePod("incoming", 500, 1024, nil)
+
+	for i := 0; i < 24; i++ {
+		scores := make(framework.NodeScoreList, len(nodes))
+		for j, name := range nodes {
+			scores[j] = framework.NodeScore{Name: name, Score: int64(counts[name])}
+		}
+
+		status := brr.NormalizeScore(context.Background(), nil, nil, scores)
+		if status != nil {
+			t.Fatalf("normalize returned status: %v", status)
+		}
+
+		winner := scores[0]
+		for _, s := range scores[1:] {
+			if s.Score > winner.Score {
+				winner = s
+			}
+		}
+
+		if reserveStatus := brr.Reserve(context.Background(), nil, pod, winner.Name); reserveStatus != nil {
+			t.Fatalf("reserve returned status: %v", reserveStatus)
+		}
+
+		counts[winner.Name]++
+	}
+
+	expected := map[string]int{
+		"a": 6,
+		"b": 6,
+		"c": 6,
+		"d": 6,
+		"e": 0,
+		"f": 0,
+		"g": 0,
+		"h": 0,
+	}
+
+	for _, name := range nodes {
+		if counts[name] != expected[name] {
+			t.Fatalf("unexpected distribution for %s: got %d, want %d, all=%v", name, counts[name], expected[name], counts)
+		}
+	}
+}
+
 func TestNormalizeScoreMultipleBuckets(t *testing.T) {
 	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 2})
 	obj := &runtime.Unknown{Raw: raw}
