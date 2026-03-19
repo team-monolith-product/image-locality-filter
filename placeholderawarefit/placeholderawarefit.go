@@ -9,10 +9,7 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
-// Name matches the built-in NodeResourcesFit so that registering this plugin
-// via app.WithPlugin overrides the default implementation. This preserves the
-// scheduler's assume/cache path while replacing only the Filter logic.
-const Name = "NodeResourcesFit"
+const Name = "PlaceholderAwareNodeResourcesFit"
 
 type PlaceholderAwareNodeResourcesFit struct{}
 
