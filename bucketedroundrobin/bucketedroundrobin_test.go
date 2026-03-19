@@ -49,6 +49,9 @@ func TestNewDefaultArgs(t *testing.T) {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	brr := p.(*BucketedRoundRobin)
+	if brr.Name() != Name {
+		t.Errorf("expected plugin name %s, got %s", Name, brr.Name())
+	}
 	if brr.bucketSize != 1 {
 		t.Errorf("expected bucketSize=1, got %d", brr.bucketSize)
 	}
@@ -148,6 +151,38 @@ func TestNormalizeScoreRoundRobin(t *testing.T) {
 		if winners[name] != 1 {
 			t.Errorf("expected node %s to win once, won %d times. winners: %v", name, winners[name], winners)
 		}
+	}
+}
+
+func TestNormalizeScoreSkipsLastSelectedNode(t *testing.T) {
+	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 4})
+	obj := &runtime.Unknown{Raw: raw}
+	p, _ := New(obj, nil)
+	brr := p.(*BucketedRoundRobin)
+
+	status := brr.Reserve(context.Background(), nil, makePod("prev", 500, 1024, nil), "a")
+	if status != nil {
+		t.Fatalf("reserve returned status: %v", status)
+	}
+
+	scores := framework.NodeScoreList{
+		{Name: "a", Score: 50},
+		{Name: "b", Score: 50},
+		{Name: "c", Score: 50},
+		{Name: "d", Score: 50},
+	}
+	brr.NormalizeScore(context.Background(), nil, nil, scores)
+
+	var best string
+	var bestScore int64 = -1
+	for _, s := range scores {
+		if s.Score > bestScore {
+			bestScore = s.Score
+			best = s.Name
+		}
+	}
+	if best == "a" {
+		t.Fatalf("expected last selected node 'a' to be skipped as winner, got scores: %+v", scores)
 	}
 }
 

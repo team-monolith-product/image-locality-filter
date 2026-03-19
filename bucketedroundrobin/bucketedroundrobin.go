@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"sync"
 	"sync/atomic"
 
 	v1 "k8s.io/api/core/v1"
@@ -22,10 +23,13 @@ type BucketedRoundRobin struct {
 	handle     framework.Handle
 	bucketSize int
 	counter    atomic.Uint64
+	mu         sync.RWMutex
+	lastNode   string
 }
 
 var _ framework.ScorePlugin = &BucketedRoundRobin{}
 var _ framework.ScoreExtensions = &BucketedRoundRobin{}
+var _ framework.ReservePlugin = &BucketedRoundRobin{}
 
 func New(obj runtime.Object, h framework.Handle) (framework.Plugin, error) {
 	args := BucketedRoundRobinArgs{BucketSize: 1}
@@ -90,6 +94,7 @@ func (pl *BucketedRoundRobin) NormalizeScore(ctx context.Context, state *framewo
 	}
 
 	cycle := pl.counter.Add(1) - 1
+	lastNode := pl.lastSelectedNode()
 
 	type indexedScore struct {
 		origIdx int
@@ -124,6 +129,12 @@ func (pl *BucketedRoundRobin) NormalizeScore(ctx context.Context, state *framewo
 		}
 
 		winnerOffset := int(cycle % uint64(bucketLen))
+		if bucketLen > 1 && lastNode != "" {
+			winnerNode := scores[sorted[start+winnerOffset].origIdx].Name
+			if winnerNode == lastNode {
+				winnerOffset = (winnerOffset + 1) % bucketLen
+			}
+		}
 		for i := start; i < end; i++ {
 			posInBucket := i - start
 			offset := (posInBucket - winnerOffset + bucketLen) % bucketLen
@@ -136,6 +147,22 @@ func (pl *BucketedRoundRobin) NormalizeScore(ctx context.Context, state *framewo
 
 func (pl *BucketedRoundRobin) ScoreExtensions() framework.ScoreExtensions {
 	return pl
+}
+
+func (pl *BucketedRoundRobin) Reserve(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
+	pl.mu.Lock()
+	pl.lastNode = nodeName
+	pl.mu.Unlock()
+	return nil
+}
+
+func (pl *BucketedRoundRobin) Unreserve(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) {
+}
+
+func (pl *BucketedRoundRobin) lastSelectedNode() string {
+	pl.mu.RLock()
+	defer pl.mu.RUnlock()
+	return pl.lastNode
 }
 
 func actualRequested(nodeInfo *framework.NodeInfo) (milliCPU, memory int64) {
