@@ -66,6 +66,7 @@ func (pl *BucketedRoundRobin) Score(ctx context.Context, state *framework.CycleS
 
 	allocCPU := node.Status.Allocatable.Cpu().MilliValue()
 	allocMem := node.Status.Allocatable.Memory().Value()
+	// 원본 mostRequestedScore와 동일한 divide-by-zero 방어
 	if allocCPU == 0 || allocMem == 0 {
 		return 0, nil
 	}
