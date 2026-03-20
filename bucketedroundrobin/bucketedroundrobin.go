@@ -30,9 +30,11 @@ type BucketedRoundRobin struct {
 	recentNodes []string
 }
 
-var _ framework.ScorePlugin = &BucketedRoundRobin{}
-var _ framework.ScoreExtensions = &BucketedRoundRobin{}
-var _ framework.ReservePlugin = &BucketedRoundRobin{}
+var (
+	_ framework.ScorePlugin     = &BucketedRoundRobin{}
+	_ framework.ScoreExtensions = &BucketedRoundRobin{}
+	_ framework.ReservePlugin   = &BucketedRoundRobin{}
+)
 
 func New(obj runtime.Object, h framework.Handle) (framework.Plugin, error) {
 	raw := obj.(*runtime.Unknown)
@@ -51,7 +53,7 @@ func (pl *BucketedRoundRobin) Name() string {
 // k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderesources/most_allocated.go
 // 의 mostRequestedScore를 기반으로 하되, 다음을 변경:
 //   - actualRequested()에서 component=user-placeholder 라벨 pod 제외
-//   - 메모리만 사용하여 점수 산정 (CPU는 고려하지 않음)
+//   - 메모리만 사용하여 점수 산정
 func (pl *BucketedRoundRobin) Score(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
 	nodeInfo, err := pl.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)
 	if err != nil {
@@ -77,10 +79,6 @@ func (pl *BucketedRoundRobin) Score(ctx context.Context, state *framework.CycleS
 
 func (pl *BucketedRoundRobin) NormalizeScore(ctx context.Context, state *framework.CycleState, pod *v1.Pod, scores framework.NodeScoreList) *framework.Status {
 	n := len(scores)
-	if n == 0 {
-		return nil
-	}
-
 	recentNodes := pl.getRecentNodes()
 
 	sorted := make([]indexedScore, n)

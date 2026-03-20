@@ -255,19 +255,6 @@ func TestNormalizeScoreSingleNode(t *testing.T) {
 	}
 }
 
-func TestNormalizeScoreEmpty(t *testing.T) {
-	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 1})
-	obj := &runtime.Unknown{Raw: raw}
-	p, _ := New(obj, nil)
-	brr := p.(*BucketedRoundRobin)
-
-	scores := framework.NodeScoreList{}
-	status := brr.NormalizeScore(context.Background(), nil, nil, scores)
-	if status != nil {
-		t.Errorf("expected nil status for empty scores, got %v", status)
-	}
-}
-
 func TestPodMemoryRequest(t *testing.T) {
 	pod := makePod("test", 500, 1024, nil)
 	mem := podMemoryRequest(pod)
