@@ -35,15 +35,10 @@ var _ framework.ScoreExtensions = &BucketedRoundRobin{}
 var _ framework.ReservePlugin = &BucketedRoundRobin{}
 
 func New(obj runtime.Object, h framework.Handle) (framework.Plugin, error) {
-	args := BucketedRoundRobinArgs{BucketSize: 1}
-	if obj != nil {
-		raw, ok := obj.(*runtime.Unknown)
-		if !ok {
-			return nil, fmt.Errorf("expected *runtime.Unknown, got %T", obj)
-		}
-		if err := json.Unmarshal(raw.Raw, &args); err != nil {
-			return nil, fmt.Errorf("failed to parse BucketedRoundRobin args: %w", err)
-		}
+	raw := obj.(*runtime.Unknown)
+	var args BucketedRoundRobinArgs
+	if err := json.Unmarshal(raw.Raw, &args); err != nil {
+		return nil, fmt.Errorf("failed to parse BucketedRoundRobin args: %w", err)
 	}
 	if args.BucketSize <= 0 {
 		return nil, fmt.Errorf("bucketSize must be positive, got %d", args.BucketSize)

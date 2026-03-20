@@ -43,20 +43,6 @@ func makePod(name string, cpuMillis int64, memBytes int64, labels map[string]str
 	}
 }
 
-func TestNewDefaultArgs(t *testing.T) {
-	p, err := New(nil, nil)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	brr := p.(*BucketedRoundRobin)
-	if brr.Name() != Name {
-		t.Errorf("expected plugin name %s, got %s", Name, brr.Name())
-	}
-	if brr.bucketSize != 1 {
-		t.Errorf("expected bucketSize=1, got %d", brr.bucketSize)
-	}
-}
-
 func TestNewWithArgs(t *testing.T) {
 	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 4})
 	obj := &runtime.Unknown{Raw: raw}
@@ -94,7 +80,9 @@ func TestActualRequestedExcludesPlaceholder(t *testing.T) {
 }
 
 func TestNormalizeScoreBucketSize1(t *testing.T) {
-	p, _ := New(nil, nil)
+	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 1})
+	obj := &runtime.Unknown{Raw: raw}
+	p, _ := New(obj, nil)
 	brr := p.(*BucketedRoundRobin)
 
 	scores := framework.NodeScoreList{
@@ -264,7 +252,9 @@ func TestNormalizeScoreNodesLessThanBucketSize(t *testing.T) {
 }
 
 func TestNormalizeScoreSingleNode(t *testing.T) {
-	p, _ := New(nil, nil)
+	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 1})
+	obj := &runtime.Unknown{Raw: raw}
+	p, _ := New(obj, nil)
 	brr := p.(*BucketedRoundRobin)
 
 	scores := framework.NodeScoreList{
@@ -278,7 +268,9 @@ func TestNormalizeScoreSingleNode(t *testing.T) {
 }
 
 func TestNormalizeScoreEmpty(t *testing.T) {
-	p, _ := New(nil, nil)
+	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 1})
+	obj := &runtime.Unknown{Raw: raw}
+	p, _ := New(obj, nil)
 	brr := p.(*BucketedRoundRobin)
 
 	scores := framework.NodeScoreList{}
