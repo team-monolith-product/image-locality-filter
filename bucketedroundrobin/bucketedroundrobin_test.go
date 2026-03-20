@@ -61,10 +61,7 @@ func TestActualRequestedExcludesPlaceholder(t *testing.T) {
 		makePod("real", 1000, 1024, nil),
 		makePod("placeholder", 500, 512, map[string]string{"component": "user-placeholder"}),
 	)
-	cpu, mem := actualRequested(nodeInfo)
-	if cpu != 1000 {
-		t.Errorf("expected cpu=1000, got %d", cpu)
-	}
+	mem := actualRequested(nodeInfo)
 	if mem != 1024 {
 		t.Errorf("expected mem=1024, got %d", mem)
 	}
@@ -271,15 +268,9 @@ func TestNormalizeScoreEmpty(t *testing.T) {
 	}
 }
 
-func TestCalculatePodResourceRequest(t *testing.T) {
+func TestPodMemoryRequest(t *testing.T) {
 	pod := makePod("test", 500, 1024, nil)
-
-	cpu := calculatePodResourceRequest(pod, v1.ResourceCPU)
-	if cpu != 500 {
-		t.Errorf("expected 500m cpu, got %d", cpu)
-	}
-
-	mem := calculatePodResourceRequest(pod, v1.ResourceMemory)
+	mem := podMemoryRequest(pod)
 	if mem != 1024 {
 		t.Errorf("expected 1024 bytes memory, got %d", mem)
 	}

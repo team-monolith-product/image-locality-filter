@@ -51,8 +51,7 @@ func (pl *BucketedRoundRobin) Name() string {
 // k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderesources/most_allocated.go
 // 의 mostRequestedScore를 기반으로 하되, 다음을 변경:
 //   - actualRequested()에서 component=user-placeholder 라벨 pod 제외
-//   - calculatePodResourceRequest()에서 메모리는 MilliValue() 대신 Value() 사용
-//     (node allocatable 단위와 일치시키기 위함)
+//   - 메모리만 사용하여 점수 산정 (CPU는 고려하지 않음)
 func (pl *BucketedRoundRobin) Score(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
 	nodeInfo, err := pl.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)
 	if err != nil {
@@ -64,21 +63,16 @@ func (pl *BucketedRoundRobin) Score(ctx context.Context, state *framework.CycleS
 		return 0, framework.NewStatus(framework.Error, "node not found")
 	}
 
-	allocCPU := node.Status.Allocatable.Cpu().MilliValue()
 	allocMem := node.Status.Allocatable.Memory().Value()
 	// 원본 mostRequestedScore와 동일한 divide-by-zero 방어
-	if allocCPU == 0 || allocMem == 0 {
+	if allocMem == 0 {
 		return 0, nil
 	}
 
-	reqCPU, reqMem := actualRequested(nodeInfo)
-	reqCPU += calculatePodResourceRequest(pod, v1.ResourceCPU)
-	reqMem += calculatePodResourceRequest(pod, v1.ResourceMemory)
+	reqMem := actualRequested(nodeInfo)
+	reqMem += podMemoryRequest(pod)
 
-	cpuScore := (reqCPU * framework.MaxNodeScore) / allocCPU
-	memScore := (reqMem * framework.MaxNodeScore) / allocMem
-
-	return (cpuScore + memScore) / 2, nil
+	return (reqMem * framework.MaxNodeScore) / allocMem, nil
 }
 
 func (pl *BucketedRoundRobin) NormalizeScore(ctx context.Context, state *framework.CycleState, pod *v1.Pod, scores framework.NodeScoreList) *framework.Status {
@@ -175,29 +169,24 @@ func (pl *BucketedRoundRobin) getRecentNodes() []string {
 	return cp
 }
 
-func actualRequested(nodeInfo *framework.NodeInfo) (milliCPU, memory int64) {
+func actualRequested(nodeInfo *framework.NodeInfo) int64 {
+	var memory int64
 	for _, podInfo := range nodeInfo.Pods {
 		if podInfo.Pod.Labels["component"] == "user-placeholder" {
 			continue
 		}
 		for _, container := range podInfo.Pod.Spec.Containers {
-			milliCPU += container.Resources.Requests.Cpu().MilliValue()
 			memory += container.Resources.Requests.Memory().Value()
 		}
 	}
-	return
+	return memory
 }
 
-func calculatePodResourceRequest(pod *v1.Pod, resource v1.ResourceName) int64 {
+func podMemoryRequest(pod *v1.Pod) int64 {
 	var total int64
 	for _, container := range pod.Spec.Containers {
-		if q, ok := container.Resources.Requests[resource]; ok {
-			switch resource {
-			case v1.ResourceMemory:
-				total += q.Value()
-			default:
-				total += q.MilliValue()
-			}
+		if q, ok := container.Resources.Requests[v1.ResourceMemory]; ok {
+			total += q.Value()
 		}
 	}
 	return total
