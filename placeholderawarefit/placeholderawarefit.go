@@ -14,6 +14,7 @@ import (
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/klog/v2"
 	"k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/feature"
@@ -76,10 +77,31 @@ func (pl *PlaceholderAwareFit) PreFilterExtensions() framework.PreFilterExtensio
 // Filter는 user pod일 때 nodeInfo를 복제해서 placeholder 리소스를 차감한 뒤
 // 빌트인 Filter에 전달한다. placeholder pod은 보정 없이 원본 그대로 전달한다.
 func (pl *PlaceholderAwareFit) Filter(ctx context.Context, cycleState *framework.CycleState, pod *v1.Pod, nodeInfo *framework.NodeInfo) *framework.Status {
+	node := nodeInfo.Node()
+	nodeName := ""
+	if node != nil {
+		nodeName = node.Name
+	}
+	klog.V(4).InfoS("PlaceholderAwareFit.Filter",
+		"node", nodeName,
+		"requestedMilliCPU", nodeInfo.Requested.MilliCPU,
+		"requestedMemory", nodeInfo.Requested.Memory,
+		"pods", len(nodeInfo.Pods),
+		"isPlaceholder", isPlaceholderPod(pod),
+	)
+
 	if isPlaceholderPod(pod) {
 		return pl.inner.(framework.FilterPlugin).Filter(ctx, cycleState, pod, nodeInfo)
 	}
 	adjusted := subtractPlaceholder(nodeInfo)
+
+	klog.V(4).InfoS("PlaceholderAwareFit.Filter after subtract",
+		"node", nodeName,
+		"adjustedMilliCPU", adjusted.Requested.MilliCPU,
+		"adjustedMemory", adjusted.Requested.Memory,
+		"adjustedPods", len(adjusted.Pods),
+	)
+
 	return pl.inner.(framework.FilterPlugin).Filter(ctx, cycleState, pod, adjusted)
 }
 
