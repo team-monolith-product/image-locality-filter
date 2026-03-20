@@ -55,8 +55,11 @@ func (pl *BucketedRoundRobin) Name() string {
 	return Name
 }
 
-// Score calculates a MostAllocated-style utilization score per node,
-// excluding placeholder pods from the calculation.
+// k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderesources/most_allocated.go
+// 의 mostRequestedScore를 기반으로 하되, 다음을 변경:
+//   - actualRequested()에서 component=user-placeholder 라벨 pod 제외
+//   - calculatePodResourceRequest()에서 메모리는 MilliValue() 대신 Value() 사용
+//     (node allocatable 단위와 일치시키기 위함)
 func (pl *BucketedRoundRobin) Score(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) (int64, *framework.Status) {
 	nodeInfo, err := pl.handle.SnapshotSharedLister().NodeInfos().Get(nodeName)
 	if err != nil {
@@ -84,9 +87,6 @@ func (pl *BucketedRoundRobin) Score(ctx context.Context, state *framework.CycleS
 	return (cpuScore + memScore) / 2, nil
 }
 
-// NormalizeScore groups nodes into buckets by raw score and applies
-// round-robin within each bucket so that nodes with similar utilization
-// take turns being the highest scored.
 func (pl *BucketedRoundRobin) NormalizeScore(ctx context.Context, state *framework.CycleState, pod *v1.Pod, scores framework.NodeScoreList) *framework.Status {
 	n := len(scores)
 	if n == 0 {

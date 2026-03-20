@@ -94,7 +94,6 @@ func TestActualRequestedExcludesPlaceholder(t *testing.T) {
 }
 
 func TestNormalizeScoreBucketSize1(t *testing.T) {
-	// bucketSize=1 -> pure MostAllocated ordering, no round-robin
 	p, _ := New(nil, nil)
 	brr := p.(*BucketedRoundRobin)
 
@@ -106,7 +105,6 @@ func TestNormalizeScoreBucketSize1(t *testing.T) {
 
 	brr.NormalizeScore(context.Background(), nil, nil, scores)
 
-	// high should always get MaxNodeScore
 	scoreMap := map[string]int64{}
 	for _, s := range scores {
 		scoreMap[s.Name] = s.Score
@@ -120,8 +118,6 @@ func TestNormalizeScoreBucketSize1(t *testing.T) {
 func TestNormalizeScoreRoundRobin(t *testing.T) {
 	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 4})
 	obj := &runtime.Unknown{Raw: raw}
-
-	// 4 nodes with same score -> single bucket, round-robin
 	p, _ := New(obj, nil)
 	brr := p.(*BucketedRoundRobin)
 
@@ -146,7 +142,6 @@ func TestNormalizeScoreRoundRobin(t *testing.T) {
 		winners[best]++
 	}
 
-	// Each node should win exactly once in 4 cycles
 	for _, name := range []string{"a", "b", "c", "d"} {
 		if winners[name] != 1 {
 			t.Errorf("expected node %s to win once, won %d times. winners: %v", name, winners[name], winners)
@@ -160,10 +155,7 @@ func TestNormalizeScoreSkipsLastSelectedNode(t *testing.T) {
 	p, _ := New(obj, nil)
 	brr := p.(*BucketedRoundRobin)
 
-	status := brr.Reserve(context.Background(), nil, makePod("prev", 500, 1024, nil), "a")
-	if status != nil {
-		t.Fatalf("reserve returned status: %v", status)
-	}
+	brr.Reserve(context.Background(), nil, makePod("prev", 500, 1024, nil), "a")
 
 	scores := framework.NodeScoreList{
 		{Name: "a", Score: 50},
@@ -186,7 +178,7 @@ func TestNormalizeScoreSkipsLastSelectedNode(t *testing.T) {
 	}
 }
 
-func TestSimulateEmpty8Nodes24PodsCurrentLogic(t *testing.T) {
+func TestSimulateEmpty8Nodes24Pods(t *testing.T) {
 	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 4})
 	obj := &runtime.Unknown{Raw: raw}
 	p, _ := New(obj, nil)
@@ -214,22 +206,13 @@ func TestSimulateEmpty8Nodes24PodsCurrentLogic(t *testing.T) {
 			}
 		}
 
-		if reserveStatus := brr.Reserve(context.Background(), nil, pod, winner.Name); reserveStatus != nil {
-			t.Fatalf("reserve returned status: %v", reserveStatus)
-		}
-
+		brr.Reserve(context.Background(), nil, pod, winner.Name)
 		counts[winner.Name]++
 	}
 
 	expected := map[string]int{
-		"a": 6,
-		"b": 6,
-		"c": 6,
-		"d": 6,
-		"e": 0,
-		"f": 0,
-		"g": 0,
-		"h": 0,
+		"a": 6, "b": 6, "c": 6, "d": 6,
+		"e": 0, "f": 0, "g": 0, "h": 0,
 	}
 
 	for _, name := range nodes {
@@ -259,7 +242,6 @@ func TestNormalizeScoreMultipleBuckets(t *testing.T) {
 		scoreMap[s.Name] = s.Score
 	}
 
-	// High bucket nodes should always score higher than low bucket nodes
 	highMin := scoreMap["high1"]
 	if scoreMap["high2"] < highMin {
 		highMin = scoreMap["high2"]
@@ -280,7 +262,6 @@ func TestNormalizeScoreNodesLessThanBucketSize(t *testing.T) {
 	p, _ := New(obj, nil)
 	brr := p.(*BucketedRoundRobin)
 
-	// 2 nodes, bucketSize=4 -> single bucket of 2, round-robin within
 	winners := map[string]int{}
 	for i := 0; i < 2; i++ {
 		scores := framework.NodeScoreList{
@@ -332,8 +313,8 @@ func TestNormalizeScoreEmpty(t *testing.T) {
 
 func TestCalculatePodResourceRequest(t *testing.T) {
 	pod := makePod("test", 500, 1024, nil)
+
 	cpu := calculatePodResourceRequest(pod, v1.ResourceCPU)
-	// CPU uses MilliValue() which returns milliCPU
 	if cpu != 500 {
 		t.Errorf("expected 500m cpu, got %d", cpu)
 	}

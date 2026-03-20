@@ -40,7 +40,8 @@ func (pl *ImageLocalityFilter) Filter(ctx context.Context, _ *framework.CycleSta
 	return nil
 }
 
-// Adopted from https://github.com/kubernetes/kubernetes/blob/master/pkg/scheduler/framework/plugins/imagelocality/image_locality.go
+// https://github.com/kubernetes/kubernetes/blob/master/pkg/scheduler/framework/plugins/imagelocality/image_locality.go
+// 에서 가져옴
 func normalizedImageName(name string) string {
 	if strings.LastIndex(name, ":") <= strings.LastIndex(name, "/") {
 		name = name + ":latest"
