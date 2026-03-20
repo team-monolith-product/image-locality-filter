@@ -9,9 +9,12 @@ package placeholderawarefit
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/kubernetes/pkg/scheduler/apis/config"
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/feature"
 	"k8s.io/kubernetes/pkg/scheduler/framework/plugins/noderesources"
@@ -31,11 +34,29 @@ var _ framework.ScorePlugin = &PlaceholderAwareFit{}
 var _ framework.EnqueueExtensions = &PlaceholderAwareFit{}
 
 func New(plArgs runtime.Object, h framework.Handle, fts feature.Features) (framework.Plugin, error) {
-	inner, err := noderesources.NewFit(plArgs, h, fts)
+	// out-of-tree 플러그인은 프레임워크가 args를 자동 디코딩하지 않으므로
+	// *runtime.Unknown에서 *config.NodeResourcesFitArgs로 직접 변환한다.
+	args, err := decodeArgs(plArgs)
+	if err != nil {
+		return nil, err
+	}
+	inner, err := noderesources.NewFit(args, h, fts)
 	if err != nil {
 		return nil, err
 	}
 	return &PlaceholderAwareFit{inner: inner}, nil
+}
+
+func decodeArgs(obj runtime.Object) (*config.NodeResourcesFitArgs, error) {
+	raw, ok := obj.(*runtime.Unknown)
+	if !ok {
+		return nil, fmt.Errorf("expected *runtime.Unknown, got %T", obj)
+	}
+	args := &config.NodeResourcesFitArgs{}
+	if err := json.Unmarshal(raw.Raw, args); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal NodeResourcesFitArgs: %w", err)
+	}
+	return args, nil
 }
 
 func (pl *PlaceholderAwareFit) Name() string {
