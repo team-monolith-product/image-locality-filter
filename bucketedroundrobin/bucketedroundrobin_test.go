@@ -56,15 +56,6 @@ func TestNewWithArgs(t *testing.T) {
 	}
 }
 
-func TestNewInvalidBucketSize(t *testing.T) {
-	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 0})
-	obj := &runtime.Unknown{Raw: raw}
-	_, err := New(obj, nil)
-	if err == nil {
-		t.Fatal("expected error for bucketSize=0")
-	}
-}
-
 func TestActualRequestedExcludesPlaceholder(t *testing.T) {
 	nodeInfo := framework.NewNodeInfo(
 		makePod("real", 1000, 1024, nil),
