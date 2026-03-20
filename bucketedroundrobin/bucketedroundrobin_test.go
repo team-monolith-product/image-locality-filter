@@ -115,11 +115,14 @@ func TestNormalizeScoreBucketSize1(t *testing.T) {
 	}
 }
 
-func TestNormalizeScoreRoundRobin(t *testing.T) {
+// bucketSize=4, 동점 4노드에서 Reserve를 포함한 4 cycle 시뮬레이션.
+// recentNodes가 쌓이면서 각 노드가 정확히 1번씩 winner가 되어야 한다.
+func TestRoundRobinWithReserve(t *testing.T) {
 	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 4})
 	obj := &runtime.Unknown{Raw: raw}
 	p, _ := New(obj, nil)
 	brr := p.(*BucketedRoundRobin)
+	pod := makePod("incoming", 500, 1024, nil)
 
 	winners := map[string]int{}
 	for i := 0; i < 4; i++ {
@@ -139,6 +142,7 @@ func TestNormalizeScoreRoundRobin(t *testing.T) {
 				best = s.Name
 			}
 		}
+		brr.Reserve(context.Background(), nil, pod, best)
 		winners[best]++
 	}
 
@@ -146,35 +150,6 @@ func TestNormalizeScoreRoundRobin(t *testing.T) {
 		if winners[name] != 1 {
 			t.Errorf("expected node %s to win once, won %d times. winners: %v", name, winners[name], winners)
 		}
-	}
-}
-
-func TestNormalizeScoreSkipsLastSelectedNode(t *testing.T) {
-	raw, _ := json.Marshal(BucketedRoundRobinArgs{BucketSize: 4})
-	obj := &runtime.Unknown{Raw: raw}
-	p, _ := New(obj, nil)
-	brr := p.(*BucketedRoundRobin)
-
-	brr.Reserve(context.Background(), nil, makePod("prev", 500, 1024, nil), "a")
-
-	scores := framework.NodeScoreList{
-		{Name: "a", Score: 50},
-		{Name: "b", Score: 50},
-		{Name: "c", Score: 50},
-		{Name: "d", Score: 50},
-	}
-	brr.NormalizeScore(context.Background(), nil, nil, scores)
-
-	var best string
-	var bestScore int64 = -1
-	for _, s := range scores {
-		if s.Score > bestScore {
-			bestScore = s.Score
-			best = s.Name
-		}
-	}
-	if best == "a" {
-		t.Fatalf("expected last selected node 'a' to be skipped as winner, got scores: %+v", scores)
 	}
 }
 
@@ -261,6 +236,7 @@ func TestNormalizeScoreNodesLessThanBucketSize(t *testing.T) {
 	obj := &runtime.Unknown{Raw: raw}
 	p, _ := New(obj, nil)
 	brr := p.(*BucketedRoundRobin)
+	pod := makePod("incoming", 500, 1024, nil)
 
 	winners := map[string]int{}
 	for i := 0; i < 2; i++ {
@@ -278,6 +254,7 @@ func TestNormalizeScoreNodesLessThanBucketSize(t *testing.T) {
 				best = s.Name
 			}
 		}
+		brr.Reserve(context.Background(), nil, pod, best)
 		winners[best]++
 	}
 

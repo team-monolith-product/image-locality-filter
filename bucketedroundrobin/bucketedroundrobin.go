@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"sort"
 	"sync"
-	"sync/atomic"
 
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -19,12 +18,16 @@ type BucketedRoundRobinArgs struct {
 	BucketSize int32 `json:"bucketSize"`
 }
 
+type indexedScore struct {
+	origIdx int
+	score   int64
+}
+
 type BucketedRoundRobin struct {
-	handle     framework.Handle
-	bucketSize int
-	counter    atomic.Uint64
-	mu         sync.RWMutex
-	lastNode   string
+	handle      framework.Handle
+	bucketSize  int
+	mu          sync.RWMutex
+	recentNodes []string
 }
 
 var _ framework.ScorePlugin = &BucketedRoundRobin{}
@@ -93,13 +96,8 @@ func (pl *BucketedRoundRobin) NormalizeScore(ctx context.Context, state *framewo
 		return nil
 	}
 
-	cycle := pl.counter.Add(1) - 1
-	lastNode := pl.lastSelectedNode()
+	recentNodes := pl.getRecentNodes()
 
-	type indexedScore struct {
-		origIdx int
-		score   int64
-	}
 	sorted := make([]indexedScore, n)
 	for i, s := range scores {
 		sorted[i] = indexedScore{origIdx: i, score: s.Score}
@@ -128,13 +126,8 @@ func (pl *BucketedRoundRobin) NormalizeScore(ctx context.Context, state *framewo
 			bucketBase = framework.MaxNodeScore
 		}
 
-		winnerOffset := int(cycle % uint64(bucketLen))
-		if bucketLen > 1 && lastNode != "" {
-			winnerNode := scores[sorted[start+winnerOffset].origIdx].Name
-			if winnerNode == lastNode {
-				winnerOffset = (winnerOffset + 1) % bucketLen
-			}
-		}
+		// 버킷 내에서 recentNodes에 포함되지 않은 첫 번째 노드를 winner로 선택
+		winnerOffset := pickWinner(scores, sorted[start:end], recentNodes)
 		for i := start; i < end; i++ {
 			posInBucket := i - start
 			offset := (posInBucket - winnerOffset + bucketLen) % bucketLen
@@ -145,24 +138,50 @@ func (pl *BucketedRoundRobin) NormalizeScore(ctx context.Context, state *framewo
 	return nil
 }
 
+// pickWinner는 버킷 내에서 recentNodes에 포함되지 않은 첫 번째 노드의 offset을 반환한다.
+// 모든 노드가 recentNodes에 포함되어 있으면 offset 0을 반환한다.
+func pickWinner(scores framework.NodeScoreList, bucket []indexedScore, recentNodes []string) int {
+	recentSet := make(map[string]struct{}, len(recentNodes))
+	for _, name := range recentNodes {
+		recentSet[name] = struct{}{}
+	}
+	for i, entry := range bucket {
+		if _, recent := recentSet[scores[entry.origIdx].Name]; !recent {
+			return i
+		}
+	}
+	return 0
+}
+
 func (pl *BucketedRoundRobin) ScoreExtensions() framework.ScoreExtensions {
 	return pl
 }
 
 func (pl *BucketedRoundRobin) Reserve(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) *framework.Status {
 	pl.mu.Lock()
-	pl.lastNode = nodeName
-	pl.mu.Unlock()
+	defer pl.mu.Unlock()
+
+	maxRecent := pl.bucketSize - 1
+	if maxRecent <= 0 {
+		return nil
+	}
+
+	pl.recentNodes = append(pl.recentNodes, nodeName)
+	if len(pl.recentNodes) > maxRecent {
+		pl.recentNodes = pl.recentNodes[len(pl.recentNodes)-maxRecent:]
+	}
 	return nil
 }
 
 func (pl *BucketedRoundRobin) Unreserve(ctx context.Context, state *framework.CycleState, pod *v1.Pod, nodeName string) {
 }
 
-func (pl *BucketedRoundRobin) lastSelectedNode() string {
+func (pl *BucketedRoundRobin) getRecentNodes() []string {
 	pl.mu.RLock()
 	defer pl.mu.RUnlock()
-	return pl.lastNode
+	cp := make([]string, len(pl.recentNodes))
+	copy(cp, pl.recentNodes)
+	return cp
 }
 
 func actualRequested(nodeInfo *framework.NodeInfo) (milliCPU, memory int64) {
