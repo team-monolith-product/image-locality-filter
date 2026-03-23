@@ -1,3 +1,5 @@
+// Package brrpreemption 은 버킷 기반 most-allocated 점수로
+// preemption 대상 노드를 선택하는 스케줄러 PostFilter 플러그인이다.
 package brrpreemption
 
 import (

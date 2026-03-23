@@ -1,3 +1,4 @@
+// Package main 은 커스텀 kube-scheduler 바이너리의 진입점이다.
 package main
 
 import (

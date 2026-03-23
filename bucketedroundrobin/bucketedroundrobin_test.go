@@ -12,18 +12,6 @@ import (
 	"k8s.io/kubernetes/pkg/scheduler/framework"
 )
 
-func makeNode(name string, cpuMillis int64, memBytes int64) *v1.Node {
-	return &v1.Node{
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Status: v1.NodeStatus{
-			Allocatable: v1.ResourceList{
-				v1.ResourceCPU:    *resource.NewMilliQuantity(cpuMillis, resource.DecimalSI),
-				v1.ResourceMemory: *resource.NewQuantity(memBytes, resource.BinarySI),
-			},
-		},
-	}
-}
-
 func makePod(name string, cpuMillis int64, memBytes int64, labels map[string]string) *v1.Pod {
 	return &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: name, Labels: labels},

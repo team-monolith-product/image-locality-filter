@@ -1,3 +1,5 @@
+// Package bucketedroundrobin 은 버킷 기반 most-allocated 점수 산정과
+// 라운드로빈 동률 처리를 통해 노드 간 pod 분산을 수행하는 스케줄러 Score 플러그인이다.
 package bucketedroundrobin
 
 import (
