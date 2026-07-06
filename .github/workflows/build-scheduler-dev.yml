@@ -20,14 +20,7 @@ jobs:
           "aws": {
             "imageName": "tmn-ecr-k8s-scheduler",
             "valueFilePath": ["aws-apne2-dev-jupyter.yaml"]
-          },
-          "ncp": {
-            "registry": "ped-cr-all-dev.ncr.gov-ntruss.com",
-            "imageName": "tmn-ecr-k8s-scheduler",
-            "valueFilePath": ["ncloud.yaml"]
           }
         }
     secrets:
-      NCP_ACCESS_KEY_ID: ${{ secrets.NCP_ACCESS_KEY_ID }}
-      NCP_SECRET_KEY: ${{ secrets.NCP_SECRET_KEY }}
       MACHINE_TOKEN: ${{ secrets.MACHINE_TOKEN }}
