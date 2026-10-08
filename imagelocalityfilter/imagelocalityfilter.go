@@ -1,3 +1,5 @@
+// Package imagelocalityfilter 는 필요한 컨테이너 이미지가 없는 노드를
+// 거부하는 스케줄러 Filter 플러그인이다.
 package imagelocalityfilter
 
 import (
