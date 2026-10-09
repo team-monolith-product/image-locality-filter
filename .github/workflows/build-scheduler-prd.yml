@@ -30,4 +30,4 @@ jobs:
     secrets:
       NCP_ACCESS_KEY_ID: ${{ secrets.NCP_ACCESS_KEY_ID }}
       NCP_SECRET_KEY: ${{ secrets.NCP_SECRET_KEY }}
-      MACHINE_TOKEN: ${{ secrets.MACHINE_TOKEN }}
+      AUTOMATION_APP_PRIVATE_KEY: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
