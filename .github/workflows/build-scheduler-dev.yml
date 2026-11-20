@@ -18,7 +18,7 @@ jobs:
       updateTargets: |
         {
           "aws": {
-            "imageName": "tmn-ecr-k8s-scheduler",
+            "imageKey": "k8s-scheduler",
             "valueFilePath": ["aws-apne2-dev-jupyter.yaml"]
           }
         }

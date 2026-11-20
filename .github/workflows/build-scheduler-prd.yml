@@ -18,8 +18,8 @@ jobs:
       updateTargets: |
         {
           "aws": {
-            "imageName": "tmn-ecr-k8s-scheduler",
-            "valueFilePath": ["aws-apne2-prd-jupyter.yaml", "aws-euw2-prd-jupyter.yaml", "aws-mes1-prd-jupyter.yaml"]
+            "imageKey": "k8s-scheduler",
+            "valueFilePath": ["aws-apne2-prd-jupyter.yaml", "aws-euw2-prd-jupyter.yaml"]
           }
         }
     secrets:
